@@ -173,12 +173,27 @@
         /* ====== 挑战模式 ====== */
         .challenge-setup{background:#fff;border-radius:var(--radius);padding:20px;text-align:center;box-shadow:var(--shadow);flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center}
         .difficulty-cards{display:flex;gap:14px;margin:14px 0;justify-content:center;flex-wrap:wrap}
-        .difficulty-card{padding:16px 22px;border:3px solid #E0E0E0;border-radius:var(--radius);cursor:pointer;transition:all .3s;background:#fff;text-align:center;min-width:150px}
+        .difficulty-card{padding:16px 22px;border:3px solid #E0E0E0;border-radius:var(--radius);cursor:pointer;transition:all .3s;background:#fff;text-align:center;min-width:150px;position:relative}
         .difficulty-card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
         .difficulty-card.selected{border-color:var(--primary);background:#F8F7FF}
+        .difficulty-card.passed{border-color:#4ECDC4;background:linear-gradient(135deg,#F0FFFC,#E8FFF9)}
+        .difficulty-card.passed.selected{border-color:var(--primary);background:#F8F7FF}
         .difficulty-card .emoji{font-size:36px;margin-bottom:6px}
         .difficulty-card h4{font-size:20px;margin-bottom:4px;font-weight:700}
         .difficulty-card p{font-size:15px;color:var(--text-light)}
+        .difficulty-card .badge-passed{position:absolute;top:6px;right:8px;font-size:18px;background:#4ECDC4;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(78,205,196,.4)}
+        .difficulty-card .best-time{margin-top:4px;font-size:12px;color:#4ECDC4;font-weight:700}
+        /* 闯关战绩概览 */
+        .challenge-overview{display:flex;gap:10px;margin:0 auto 8px;background:linear-gradient(135deg,#FFF8E7,#FFF3D6);border-radius:14px;padding:10px 16px;max-width:640px;justify-content:space-around}
+        .overview-item{display:flex;flex-direction:column;align-items:center;padding:2px 10px}
+        .overview-value{font-size:22px;font-weight:800;color:#FF8C42}
+        .overview-label{font-size:12px;color:var(--text-light);margin-top:2px;font-weight:600}
+        /* 结果引导按钮 */
+        .result-pass-tag{display:inline-block;padding:6px 16px;border-radius:20px;font-size:15px;font-weight:700;margin:6px 0}
+        .result-pass-tag.success{background:linear-gradient(135deg,#4ECDC4,#44B8B0);color:#fff;box-shadow:0 3px 10px rgba(78,205,196,.3)}
+        .result-pass-tag.fail{background:#FFE8E8;color:var(--danger);border:1.5px solid rgba(255,107,107,.3)}
+        .result-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+        .result-actions .btn{min-width:130px}
         .challenge-play-layout{display:flex;gap:16px;height:100%}
         .challenge-play-left{flex:1;display:flex;flex-direction:column}
         .challenge-play-right{width:400px;display:flex;flex-direction:column}
@@ -908,16 +923,22 @@
                 <div id="challengeSetup" style="flex:1;display:flex;flex-direction:column">
                     <div class="page-top-header">
                         <h2>🏆 限时闯关</h2>
-                        <p class="page-subtitle">选择难度，开始挑战！</p>
+                        <p class="page-subtitle">全部答对且在限时内完成即可通关 🎯</p>
+                    </div>
+                    <!-- 战绩概览 -->
+                    <div class="challenge-overview" id="challengeOverview">
+                        <div class="overview-item"><span class="overview-value" id="overviewTotal">0</span><span class="overview-label">总挑战次数</span></div>
+                        <div class="overview-item"><span class="overview-value" id="overviewPassed">0/6</span><span class="overview-label">已通关档数</span></div>
+                        <div class="overview-item"><span class="overview-value" id="overviewStars">0</span><span class="overview-label">⭐ 累计三星</span></div>
                     </div>
                     <div class="challenge-setup">
                         <div class="difficulty-cards">
-                            <div class="difficulty-card" onclick="selectDifficulty(this,'starter')"><div class="emoji">🌱</div><h4>入门</h4><p>1~3的乘法<br>8道题</p></div>
-                            <div class="difficulty-card selected" onclick="selectDifficulty(this,'easy')"><div class="emoji">🌟</div><h4>初级</h4><p>1~5的乘法<br>10道题</p></div>
-                            <div class="difficulty-card" onclick="selectDifficulty(this,'medium')"><div class="emoji">🌟🌟</div><h4>中级</h4><p>1~7的乘法<br>15道题</p></div>
-                            <div class="difficulty-card" onclick="selectDifficulty(this,'hard')"><div class="emoji">🌟🌟🌟</div><h4>高级</h4><p>1~9的乘法<br>20道题</p></div>
-                            <div class="difficulty-card" onclick="selectDifficulty(this,'expert')"><div class="emoji">🔥</div><h4>挑战</h4><p>1~9的乘法<br>30道题</p></div>
-                            <div class="difficulty-card" onclick="selectDifficulty(this,'master')"><div class="emoji">👑</div><h4>大师</h4><p>1~9的乘法<br>45道题(全量)</p></div>
+                            <div class="difficulty-card" id="diffCardStarter" onclick="selectDifficulty(this,'starter')"><div class="badge-passed" style="display:none">✅</div><div class="emoji">🌱</div><h4>入门</h4><p>1~3的乘法<br>8题 · 限时60秒</p><div class="best-time" style="display:none"></div></div>
+                            <div class="difficulty-card selected" id="diffCardEasy" onclick="selectDifficulty(this,'easy')"><div class="badge-passed" style="display:none">✅</div><div class="emoji">🌟</div><h4>初级</h4><p>1~5的乘法<br>10题 · 限时80秒</p><div class="best-time" style="display:none"></div></div>
+                            <div class="difficulty-card" id="diffCardMedium" onclick="selectDifficulty(this,'medium')"><div class="badge-passed" style="display:none">✅</div><div class="emoji">🌟🌟</div><h4>中级</h4><p>1~7的乘法<br>15题 · 限时120秒</p><div class="best-time" style="display:none"></div></div>
+                            <div class="difficulty-card" id="diffCardHard" onclick="selectDifficulty(this,'hard')"><div class="badge-passed" style="display:none">✅</div><div class="emoji">🌟🌟🌟</div><h4>高级</h4><p>1~9的乘法<br>20题 · 限时160秒</p><div class="best-time" style="display:none"></div></div>
+                            <div class="difficulty-card" id="diffCardExpert" onclick="selectDifficulty(this,'expert')"><div class="badge-passed" style="display:none">✅</div><div class="emoji">🔥</div><h4>挑战</h4><p>1~9的乘法<br>30题 · 限时240秒</p><div class="best-time" style="display:none"></div></div>
+                            <div class="difficulty-card" id="diffCardMaster" onclick="selectDifficulty(this,'master')"><div class="badge-passed" style="display:none">✅</div><div class="emoji">👑</div><h4>大师</h4><p>1~9全量45题<br>限时360秒</p><div class="best-time" style="display:none"></div></div>
                         </div>
                         <button class="btn btn-primary btn-lg" onclick="startChallenge()">🚀 开始挑战！</button>
                     </div>
@@ -950,13 +971,16 @@
                         <div class="challenge-result">
                             <h2 id="resultTitle" style="font-size:28px">🎉 太棒了！</h2>
                             <div class="result-stars" id="resultStars">⭐⭐⭐</div>
+                            <div id="resultPassTag" class="result-pass-tag" style="display:none"></div>
                             <div class="result-time" id="resultTime">用时: 00:00</div>
                             <div class="quiz-stats" style="margin-top:10px">
                                 <div class="stat-item"><span class="stat-value" id="resultCorrect">0</span><span class="stat-label">答对</span></div>
                                 <div class="stat-item"><span class="stat-value" id="resultTotal">0</span><span class="stat-label">总题数</span></div>
                                 <div class="stat-item"><span class="stat-value" id="resultAccuracy">0%</span><span class="stat-label">正确率</span></div>
                             </div>
-                            <button class="btn btn-primary" onclick="resetChallenge()" style="margin-top:14px">🔄 再来一次</button>
+                            <div class="result-actions" id="resultActions">
+                                <!-- 由 JS 动态渲染 -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1350,6 +1374,8 @@
                 practiceHistory: [],
                 // 闯关历史记录（每次闯关的详细记录）
                 challengeHistory: [],
+                // 闯关最佳成绩（按难度 key 存）：{ passed, bestTime, passCount }
+                challengeBest: {},
                 // 摸底测试结果
                 lastAssessment: null,  // { date, records, totalTime, correctCount }
                 assessmentHistory: [],  // 所有摸底历史记录数组
@@ -1380,6 +1406,7 @@
                     // 数据迁移：确保新字段初始化
                     if (!merged.practiceHistory) merged.practiceHistory = [];
                     if (!merged.challengeHistory) merged.challengeHistory = [];
+                    if (!merged.challengeBest) merged.challengeBest = {};
                     // 数据迁移：老用户 practiceRange 为空时默认全选
                     if (!Array.isArray(merged.practiceRange) || merged.practiceRange.length === 0) {
                         merged.practiceRange = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -1623,6 +1650,7 @@
             if (tabName === 'report') updateReport();
             if (tabName === 'practice' && practiceStarted) focusPracticeInput();
             if (tabName === 'practice' && !practiceStarted) renderFocusOptions();
+            if (tabName === 'challenge') renderChallengeOverview();
             if (tabName === 'assess') checkAssessHistory();
             if (tabName === 'help') detectAndSwitchBrowserTab();
 
@@ -2523,6 +2551,17 @@
         }
 
         // ====== 挑战模式 ======
+        // 难度配置（全局）：passTime=通关时间上限（秒），next=下一档 key（用于引导）
+        const DIFFICULTY_CONFIG = {
+            starter: { maxNum: 3, count: 8,  passTime: 60,  label: '入门', emoji: '🌱',     next: 'easy' },
+            easy:    { maxNum: 5, count: 10, passTime: 80,  label: '初级', emoji: '🌟',     next: 'medium' },
+            medium:  { maxNum: 7, count: 15, passTime: 120, label: '中级', emoji: '🌟🌟',   next: 'hard' },
+            hard:    { maxNum: 9, count: 20, passTime: 160, label: '高级', emoji: '🌟🌟🌟', next: 'expert' },
+            expert:  { maxNum: 9, count: 30, passTime: 240, label: '挑战', emoji: '🔥',     next: 'master' },
+            master:  { maxNum: 9, count: 45, passTime: 360, label: '大师', emoji: '👑',     next: null, fullCover: true }
+        };
+        const DIFFICULTY_ORDER = ['starter','easy','medium','hard','expert','master'];
+
         let challengeState = {
             difficulty: 'easy',
             questions: [],
@@ -2541,16 +2580,53 @@
             console.log('[selectDifficulty] 选择难度:', diff);
         }
 
-        function generateChallengeQuestions() {
-            const config = {
-                starter: { maxNum: 3, count: 8 },
-                easy: { maxNum: 5, count: 10 },
-                medium: { maxNum: 7, count: 15 },
-                hard: { maxNum: 9, count: 20 },
-                expert: { maxNum: 9, count: 30 },
-                master: { maxNum: 9, count: 45, fullCover: true }
+        // 渲染战绩概览和每张卡片的通关徽章
+        function renderChallengeOverview() {
+            const best = state.challengeBest || {};
+            // 概览
+            const total = state.challengesDone || 0;
+            const passedCount = DIFFICULTY_ORDER.filter(k => best[k] && best[k].passed).length;
+            const starCount = (state.challengeHistory || []).filter(h => {
+                return h.correctCount === h.totalCount;
+            }).length;
+            const totalEl = document.getElementById('overviewTotal');
+            const passedEl = document.getElementById('overviewPassed');
+            const starsEl = document.getElementById('overviewStars');
+            if (totalEl) totalEl.textContent = total;
+            if (passedEl) passedEl.textContent = passedCount + '/6';
+            if (starsEl) starsEl.textContent = starCount;
+
+            // 每张卡片
+            const cardIdMap = {
+                starter: 'diffCardStarter', easy: 'diffCardEasy', medium: 'diffCardMedium',
+                hard: 'diffCardHard', expert: 'diffCardExpert', master: 'diffCardMaster'
             };
-            const cfg = config[challengeState.difficulty] || config.easy;
+            DIFFICULTY_ORDER.forEach(key => {
+                const card = document.getElementById(cardIdMap[key]);
+                if (!card) return;
+                const bestInfo = best[key];
+                const badge = card.querySelector('.badge-passed');
+                const bestTimeEl = card.querySelector('.best-time');
+                if (bestInfo && bestInfo.passed) {
+                    card.classList.add('passed');
+                    if (badge) badge.style.display = 'flex';
+                    if (bestTimeEl) {
+                        bestTimeEl.style.display = 'block';
+                        const t = bestInfo.bestTime;
+                        const m = String(Math.floor(t / 60)).padStart(2, '0');
+                        const s = String(t % 60).padStart(2, '0');
+                        bestTimeEl.textContent = '最佳 ' + m + ':' + s;
+                    }
+                } else {
+                    card.classList.remove('passed');
+                    if (badge) badge.style.display = 'none';
+                    if (bestTimeEl) bestTimeEl.style.display = 'none';
+                }
+            });
+        }
+
+        function generateChallengeQuestions() {
+            const cfg = DIFFICULTY_CONFIG[challengeState.difficulty] || DIFFICULTY_CONFIG.easy;
             const { maxNum, count, fullCover } = cfg;
             const questions = [];
 
@@ -2695,53 +2771,160 @@
             const total = challengeState.questions.length;
             const correctCount = challengeState.correctCount;
             const accuracy = Math.round(correctCount / total * 100);
-            const min = String(Math.floor(challengeState.seconds / 60)).padStart(2, '0');
-            const sec = String(challengeState.seconds % 60).padStart(2, '0');
+            const seconds = challengeState.seconds;
+            const min = String(Math.floor(seconds / 60)).padStart(2, '0');
+            const sec = String(seconds % 60).padStart(2, '0');
+            const diffKey = challengeState.difficulty;
+            const diffCfg = DIFFICULTY_CONFIG[diffKey] || DIFFICULTY_CONFIG.easy;
+
+            // 通关判定：全部答对 且 用时 ≤ 通关时间
+            const allCorrect = correctCount === total;
+            const timeOk = seconds <= diffCfg.passTime;
+            const passed = allCorrect && timeOk;
 
             // 保存闯关历史记录
             if (!state.challengeHistory) state.challengeHistory = [];
             state.challengeHistory.push({
                 date: new Date().toLocaleString('zh-CN'),
-                difficulty: challengeState.difficulty,
+                difficulty: diffKey,
                 records: challengeState.records,
-                totalTime: challengeState.seconds,
+                totalTime: seconds,
                 correctCount,
-                totalCount: total
+                totalCount: total,
+                passed
             });
-            // 最多保留20次闯关历史
             if (state.challengeHistory.length > 20) {
                 state.challengeHistory = state.challengeHistory.slice(-20);
             }
 
-            // 计算星星
+            // 更新最佳成绩
+            if (!state.challengeBest) state.challengeBest = {};
+            const prevBest = state.challengeBest[diffKey];
+            if (passed) {
+                if (!prevBest || !prevBest.passed || seconds < prevBest.bestTime) {
+                    state.challengeBest[diffKey] = {
+                        passed: true,
+                        bestTime: seconds,
+                        passCount: (prevBest && prevBest.passCount ? prevBest.passCount : 0) + 1,
+                        date: new Date().toLocaleString('zh-CN')
+                    };
+                } else {
+                    prevBest.passCount = (prevBest.passCount || 0) + 1;
+                }
+            }
+
+            // 计算星星（三星标准：通关）
             let stars = '⭐';
             let title = '继续加油！';
-            if (accuracy >= 90) { stars = '⭐⭐⭐'; title = '🎉 太棒了！完美！'; speak('太棒了！全部答对了！你是乘法小天才！'); }
-            else if (accuracy >= 70) { stars = '⭐⭐'; title = '👍 不错哦！'; speak('不错哦！继续努力就更棒了！'); }
-            else { stars = '⭐'; title = '💪 继续加油！'; speak('别灰心，多多练习就会进步的！'); }
+            if (passed) {
+                stars = '⭐⭐⭐';
+                title = '🎉 通关成功！';
+                speak('太棒了！通关成功！你是乘法小天才！');
+            } else if (allCorrect) {
+                stars = '⭐⭐';
+                title = '👍 全部答对！';
+                speak('全部答对啦！再快一点就能通关咯！');
+            } else if (accuracy >= 70) {
+                stars = '⭐⭐';
+                title = '👍 不错哦！';
+                speak('不错哦！继续努力就更棒了！');
+            } else {
+                stars = '⭐';
+                title = '💪 继续加油！';
+                speak('别灰心，多多练习就会进步的！');
+            }
 
             document.getElementById('challengePlay').style.display = 'none';
             document.getElementById('challengeResult').style.display = 'flex';
             document.getElementById('resultTitle').textContent = title;
             document.getElementById('resultStars').textContent = stars;
-            document.getElementById('resultTime').textContent = `用时: ${min}:${sec}`;
+            document.getElementById('resultTime').textContent = `用时: ${min}:${sec} / 限时 ${formatTimeShort(diffCfg.passTime)}`;
             document.getElementById('resultCorrect').textContent = correctCount;
             document.getElementById('resultTotal').textContent = total;
             document.getElementById('resultAccuracy').textContent = accuracy + '%';
 
-            if (accuracy >= 90) {
+            // 通关徽章
+            const tagEl = document.getElementById('resultPassTag');
+            if (passed) {
+                tagEl.className = 'result-pass-tag success';
+                tagEl.textContent = '✨ ' + diffCfg.emoji + ' ' + diffCfg.label + ' 通关！';
+                tagEl.style.display = 'inline-block';
+            } else if (!allCorrect) {
+                tagEl.className = 'result-pass-tag fail';
+                tagEl.textContent = '❌ 有 ' + (total - correctCount) + ' 题答错，未通关';
+                tagEl.style.display = 'inline-block';
+            } else {
+                // 全对但超时
+                tagEl.className = 'result-pass-tag fail';
+                tagEl.textContent = '⏰ 超时 ' + (seconds - diffCfg.passTime) + ' 秒，未通关';
+                tagEl.style.display = 'inline-block';
+            }
+
+            // 渲染引导按钮
+            renderResultActions(passed, diffKey);
+
+            if (passed) {
                 spawnParticles(['🎉', '🎊', '🏆', '⭐', '🌟'], 20);
             }
 
             updateWeakItems();
             saveState();
-            console.log(`[finishChallenge] 挑战完成 正确:${correctCount}/${total} 用时:${min}:${sec} 犹豫题:${challengeState.records.filter(r=>r.isHesitant).length}`);
+            console.log(`[finishChallenge] ${diffCfg.label} 正确:${correctCount}/${total} 用时:${min}:${sec}(限时${diffCfg.passTime}s) 通关=${passed}`);
+        }
+
+        // 根据结果渲染引导按钮
+        function renderResultActions(passed, diffKey) {
+            const container = document.getElementById('resultActions');
+            if (!container) return;
+            const nextKey = DIFFICULTY_CONFIG[diffKey] && DIFFICULTY_CONFIG[diffKey].next;
+            let html = '';
+            if (passed && nextKey) {
+                const nextCfg = DIFFICULTY_CONFIG[nextKey];
+                html += `<button class="btn btn-primary" onclick="challengeNext('${nextKey}')">🚀 挑战下一关：${nextCfg.emoji} ${nextCfg.label}</button>`;
+                html += `<button class="btn" style="background:#F0F0F0;color:var(--text)" onclick="resetChallenge()">🔄 再来一次</button>`;
+                html += `<button class="btn" style="background:#F0F0F0;color:var(--text)" onclick="goHome()">🏠 返回首页</button>`;
+            } else if (passed && !nextKey) {
+                // 大师通关
+                html += `<button class="btn btn-primary" onclick="resetChallenge()">🏆 挑战其他难度</button>`;
+                html += `<button class="btn" style="background:#F0F0F0;color:var(--text)" onclick="goHome()">🏠 返回首页</button>`;
+            } else {
+                html += `<button class="btn btn-primary" onclick="resetChallenge()">🔄 再来一次</button>`;
+                html += `<button class="btn" style="background:#F0F0F0;color:var(--text)" onclick="goHome()">🏠 返回首页</button>`;
+            }
+            container.innerHTML = html;
+        }
+
+        // 挑战下一关
+        function challengeNext(nextKey) {
+            challengeState.difficulty = nextKey;
+            document.getElementById('challengeResult').style.display = 'none';
+            document.getElementById('challengeSetup').style.display = 'flex';
+            // 高亮下一关卡片
+            const cardIdMap = {
+                starter: 'diffCardStarter', easy: 'diffCardEasy', medium: 'diffCardMedium',
+                hard: 'diffCardHard', expert: 'diffCardExpert', master: 'diffCardMaster'
+            };
+            document.querySelectorAll('.difficulty-card').forEach(c => c.classList.remove('selected'));
+            const card = document.getElementById(cardIdMap[nextKey]);
+            if (card) card.classList.add('selected');
+            renderChallengeOverview();
+            // 自动开始
+            setTimeout(() => startChallenge(), 200);
+        }
+
+        // 返回首页（学一学）
+        function goHome() {
+            document.getElementById('challengeResult').style.display = 'none';
+            document.getElementById('challengeSetup').style.display = 'flex';
+            renderChallengeOverview();
+            doSwitchTab('learn');
         }
 
         function resetChallenge() {
             document.getElementById('challengeSetup').style.display = 'flex';
             document.getElementById('challengePlay').style.display = 'none';
             document.getElementById('challengeResult').style.display = 'none';
+            renderChallengeOverview();
         }
 
         // ====== 学习报告 ======
@@ -3827,6 +4010,7 @@
             renderPracticeCountButtons();
             renderFocusOptions();
             switchPracticeMode('free');
+            renderChallengeOverview();
             updatePracticeStats();
             createNumpad('challengeNumpad', 'challengeInput', checkChallenge);
             updateVoiceToggleUI();

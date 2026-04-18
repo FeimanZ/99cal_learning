@@ -160,6 +160,16 @@
         .focus-option.disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
         .focus-option .focus-count{color:var(--text-light);font-weight:500;font-size:13px}
         .focus-option.active .focus-count{color:var(--primary);font-weight:700}
+        /* 练习模式二选一切换 */
+        .practice-mode-switch{display:flex;gap:12px;width:100%;max-width:520px;margin:0 auto 4px}
+        .practice-mode-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 16px;border:2px solid #E0E0E0;border-radius:14px;background:#fff;cursor:pointer;transition:all .2s;user-select:none;font-family:inherit}
+        .practice-mode-btn:hover{border-color:var(--primary);background:#F8F9FF;transform:translateY(-1px)}
+        .practice-mode-btn .mode-icon{font-size:22px;line-height:1}
+        .practice-mode-btn .mode-label{font-size:15px;font-weight:700;color:var(--text)}
+        .practice-mode-btn .mode-desc{font-size:11px;color:var(--text-light);font-weight:500}
+        .practice-mode-btn.active{border-color:var(--primary);background:linear-gradient(135deg,#F0F2FF,#E8EBFF);box-shadow:0 4px 12px rgba(108,99,255,.2)}
+        .practice-mode-btn.active .mode-label{color:var(--primary)}
+        .practice-mode-btn.active .mode-desc{color:var(--primary);opacity:.75}
         /* ====== 挑战模式 ====== */
         .challenge-setup{background:#fff;border-radius:var(--radius);padding:20px;text-align:center;box-shadow:var(--shadow);flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center}
         .difficulty-cards{display:flex;gap:14px;margin:14px 0;justify-content:center}
@@ -813,31 +823,51 @@
                 <div id="practiceSetup" style="flex:1;display:flex;flex-direction:column">
                     <div class="page-top-header">
                         <h2>✏️ 练一练</h2>
-                        <p class="page-subtitle">选择想要练习的乘法范围，开始答题吧！</p>
+                        <p class="page-subtitle">选择练习模式，开始答题吧！</p>
                     </div>
                     <div class="challenge-setup">
-                        <div class="range-selector" style="box-shadow:none;padding:10px 0">
+                        <!-- 模式切换：自由 / 专项 二选一 -->
+                        <div class="practice-mode-switch" id="practiceModeSwitch">
+                            <button type="button" class="practice-mode-btn active" data-mode="free" onclick="switchPracticeMode('free')">
+                                <span class="mode-icon">🎲</span>
+                                <span class="mode-label">自由练习</span>
+                                <span class="mode-desc">按范围随机出题</span>
+                            </button>
+                            <button type="button" class="practice-mode-btn" data-mode="focus" onclick="switchPracticeMode('focus')">
+                                <span class="mode-icon">🎯</span>
+                                <span class="mode-label">专项练习</span>
+                                <span class="mode-desc">针对薄弱/犹豫题</span>
+                            </button>
+                        </div>
+
+                        <!-- 自由练习配置：选择范围 -->
+                        <div class="range-selector practice-mode-panel" id="practiceFreePanel" style="box-shadow:none;padding:10px 0">
                             <h3 style="font-size:18px">📌 选择练习范围</h3>
                             <div class="range-buttons" id="rangeButtons"></div>
                         </div>
+
+                        <!-- 专项练习配置：薄弱 / 犹豫 勾选 -->
+                        <div class="range-selector practice-mode-panel" id="practiceFocusPanel" style="box-shadow:none;padding:10px 0;display:none">
+                            <h3 style="font-size:18px">🎯 选择专项题库</h3>
+                            <div class="focus-options" id="focusOptions">
+                                <label class="focus-option" id="focusWeakLabel">
+                                    <input type="checkbox" id="focusWeakCheck" onchange="toggleFocusMode('weak', this.checked)">
+                                    <span class="focus-text">⚠️ 薄弱项 <span class="focus-count" id="focusWeakCount">(0)</span></span>
+                                </label>
+                                <label class="focus-option" id="focusHesitantLabel">
+                                    <input type="checkbox" id="focusHesitantCheck" onchange="toggleFocusMode('hesitant', this.checked)">
+                                    <span class="focus-text">🐢 犹豫慢题 <span class="focus-count" id="focusHesitantCount">(0)</span></span>
+                                </label>
+                            </div>
+                            <p id="focusHint" style="margin:8px 0 0;font-size:12px;color:var(--text-light);text-align:center">可单选或同时勾选，系统将只出这些精准题目</p>
+                        </div>
+
+                        <!-- 题数选择：两种模式共用 -->
                         <div class="range-selector" style="box-shadow:none;padding:10px 0">
                             <h3 style="font-size:18px">🔢 选择题数</h3>
                             <div class="range-buttons" id="practiceCountButtons"></div>
                         </div>
-                        <div class="range-selector" style="box-shadow:none;padding:10px 0">
-                            <h3 style="font-size:18px">🎯 专项练习（可选）</h3>
-                            <div class="focus-options" id="focusOptions">
-                                <label class="focus-option" id="focusWeakLabel">
-                                    <input type="checkbox" id="focusWeakCheck" onchange="toggleFocusMode('weak', this.checked)">
-                                    <span class="focus-text">⚠️ 仅练薄弱项 <span class="focus-count" id="focusWeakCount">(0)</span></span>
-                                </label>
-                                <label class="focus-option" id="focusHesitantLabel">
-                                    <input type="checkbox" id="focusHesitantCheck" onchange="toggleFocusMode('hesitant', this.checked)">
-                                    <span class="focus-text">🐢 仅练犹豫慢题 <span class="focus-count" id="focusHesitantCount">(0)</span></span>
-                                </label>
-                            </div>
-                            <p id="focusHint" style="margin:6px 0 0;font-size:12px;color:var(--text-light);text-align:center">勾选后将只出这些题，忽略上方"练习范围"</p>
-                        </div>
+
                         <button class="btn btn-primary btn-lg" onclick="startPractice()" style="margin-top:10px">🚀 开始练习！</button>
                     </div>
                 </div>
@@ -2111,6 +2141,8 @@
         let practiceCurrentCount = 0; // 当前已答题数（本轮）
         const PRACTICE_COUNT_OPTIONS = [10, 20, 30, 50, 100, 0]; // 0 表示不限
         const PRACTICE_COUNT_LABELS = { 10: '10题', 20: '20题', 30: '30题', 50: '50题', 100: '100题', 0: '♾️ 不限' };
+        // 当前练习大模式：'free' 自由练习（按范围） | 'focus' 专项练习（薄弱/犹豫）
+        let practiceMode = 'free';
         // 专项练习状态（不持久化，每次打开页面重置）
         let practiceFocusMode = { weak: false, hesitant: false };
         // 当前专项题库（开始练习时快照，避免中途薄弱项变化导致跳出）
@@ -2189,6 +2221,25 @@
             console.log('[focusMode] 专项练习:', practiceFocusMode);
         }
 
+        // 切换练习大模式：free（自由）/ focus（专项）
+        function switchPracticeMode(mode) {
+            if (mode !== 'free' && mode !== 'focus') return;
+            practiceMode = mode;
+            // 切换顶部按钮高亮
+            document.querySelectorAll('.practice-mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            // 切换面板显示
+            document.getElementById('practiceFreePanel').style.display = mode === 'free' ? 'block' : 'none';
+            document.getElementById('practiceFocusPanel').style.display = mode === 'focus' ? 'block' : 'none';
+            // 两种模式互斥：切到自由时清空 focus 勾选，切到专项时保留勾选
+            if (mode === 'free') {
+                practiceFocusMode = { weak: false, hesitant: false };
+            }
+            renderFocusOptions();
+            console.log('[practiceMode] 切换到:', mode);
+        }
+
         // 根据当前专项勾选，构建题目池（数组，每项 {a,b}，a>=b）
         function buildPracticeFocusPool() {
             const pool = new Map(); // key -> {a,b}
@@ -2260,17 +2311,24 @@
 
         // 开始练习
         function startPractice() {
-            // 构建专项题库
-            practiceFocusPool = buildPracticeFocusPool();
-            const useFocus = practiceFocusPool.length > 0;
-
-            if (!useFocus && state.practiceRange.length === 0) {
-                showToast('请先选择练习范围');
-                return;
-            }
-            if ((practiceFocusMode.weak || practiceFocusMode.hesitant) && !useFocus) {
-                showToast('当前没有可练习的专项题目');
-                return;
+            if (practiceMode === 'focus') {
+                // 专项模式：必须勾选至少一项且题库不为空
+                if (!practiceFocusMode.weak && !practiceFocusMode.hesitant) {
+                    showToast('请勾选要练习的专项题库');
+                    return;
+                }
+                practiceFocusPool = buildPracticeFocusPool();
+                if (practiceFocusPool.length === 0) {
+                    showToast('当前没有可练习的专项题目 🎉');
+                    return;
+                }
+            } else {
+                // 自由模式：必须选择范围，清空专项池
+                if (state.practiceRange.length === 0) {
+                    showToast('请先选择练习范围');
+                    return;
+                }
+                practiceFocusPool = [];
             }
 
             practiceStarted = true;
@@ -2282,13 +2340,13 @@
             newPracticeQuestion();
             updatePracticeStats();
             updatePracticeProgress();
-            if (useFocus) {
+            if (practiceMode === 'focus') {
                 const tags = [];
                 if (practiceFocusMode.weak) tags.push('薄弱项');
                 if (practiceFocusMode.hesitant) tags.push('犹豫慢题');
                 showToast('🎯 专项练习：' + tags.join(' + ') + '（' + practiceFocusPool.length + '题）');
             }
-            console.log('[startPractice] 练习开始, 专项=', useFocus, '题库数=', practiceFocusPool.length, '范围=', state.practiceRange, '目标题数:', practiceTargetCount === 0 ? '不限' : practiceTargetCount);
+            console.log('[startPractice] mode=', practiceMode, '题库数=', practiceFocusPool.length, '范围=', state.practiceRange, '目标题数:', practiceTargetCount === 0 ? '不限' : practiceTargetCount);
         }
 
         // 结束练习，回到准备页
@@ -2922,7 +2980,7 @@
             practiceFocusMode.weak = true;
             practiceFocusMode.hesitant = false;
             doSwitchTab('practice');
-            renderFocusOptions();
+            switchPracticeMode('focus');
             startPractice();
         }
 
@@ -2936,7 +2994,7 @@
             practiceFocusMode.weak = false;
             practiceFocusMode.hesitant = true;
             doSwitchTab('practice');
-            renderFocusOptions();
+            switchPracticeMode('focus');
             startPractice();
         }
 
@@ -3385,7 +3443,7 @@
                 pool.set(b + '×' + a, { a, b });
             });
             doSwitchTab('practice');
-            renderFocusOptions();
+            switchPracticeMode('focus');
             // 直接进入练习，使用临时池
             practiceFocusPool = Array.from(pool.values());
             if (practiceFocusPool.length === 0) {
@@ -3741,6 +3799,7 @@
             renderRangeButtons();
             renderPracticeCountButtons();
             renderFocusOptions();
+            switchPracticeMode('free');
             updatePracticeStats();
             createNumpad('challengeNumpad', 'challengeInput', checkChallenge);
             updateVoiceToggleUI();

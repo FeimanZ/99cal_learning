@@ -172,8 +172,8 @@
         .practice-mode-btn.active .mode-desc{color:var(--primary);opacity:.75}
         /* ====== 挑战模式 ====== */
         .challenge-setup{background:#fff;border-radius:var(--radius);padding:20px;text-align:center;box-shadow:var(--shadow);flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center}
-        .difficulty-cards{display:flex;gap:14px;margin:14px 0;justify-content:center}
-        .difficulty-card{padding:18px 28px;border:3px solid #E0E0E0;border-radius:var(--radius);cursor:pointer;transition:all .3s;background:#fff;text-align:center;min-width:170px}
+        .difficulty-cards{display:flex;gap:14px;margin:14px 0;justify-content:center;flex-wrap:wrap}
+        .difficulty-card{padding:16px 22px;border:3px solid #E0E0E0;border-radius:var(--radius);cursor:pointer;transition:all .3s;background:#fff;text-align:center;min-width:150px}
         .difficulty-card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
         .difficulty-card.selected{border-color:var(--primary);background:#F8F7FF}
         .difficulty-card .emoji{font-size:36px;margin-bottom:6px}
@@ -912,9 +912,12 @@
                     </div>
                     <div class="challenge-setup">
                         <div class="difficulty-cards">
+                            <div class="difficulty-card" onclick="selectDifficulty(this,'starter')"><div class="emoji">🌱</div><h4>入门</h4><p>1~3的乘法<br>8道题</p></div>
                             <div class="difficulty-card selected" onclick="selectDifficulty(this,'easy')"><div class="emoji">🌟</div><h4>初级</h4><p>1~5的乘法<br>10道题</p></div>
                             <div class="difficulty-card" onclick="selectDifficulty(this,'medium')"><div class="emoji">🌟🌟</div><h4>中级</h4><p>1~7的乘法<br>15道题</p></div>
                             <div class="difficulty-card" onclick="selectDifficulty(this,'hard')"><div class="emoji">🌟🌟🌟</div><h4>高级</h4><p>1~9的乘法<br>20道题</p></div>
+                            <div class="difficulty-card" onclick="selectDifficulty(this,'expert')"><div class="emoji">🔥</div><h4>挑战</h4><p>1~9的乘法<br>30道题</p></div>
+                            <div class="difficulty-card" onclick="selectDifficulty(this,'master')"><div class="emoji">👑</div><h4>大师</h4><p>1~9的乘法<br>45道题(全量)</p></div>
                         </div>
                         <button class="btn btn-primary btn-lg" onclick="startChallenge()">🚀 开始挑战！</button>
                     </div>
@@ -1333,7 +1336,7 @@
         function defaultState() {
             return {
                 // 练习数据
-                practiceRange: [],
+                practiceRange: [1, 2, 3, 4, 5, 6, 7, 8, 9],
                 practiceTotal: 0,
                 practiceCorrect: 0,
                 // 挑战数据
@@ -1377,6 +1380,10 @@
                     // 数据迁移：确保新字段初始化
                     if (!merged.practiceHistory) merged.practiceHistory = [];
                     if (!merged.challengeHistory) merged.challengeHistory = [];
+                    // 数据迁移：老用户 practiceRange 为空时默认全选
+                    if (!Array.isArray(merged.practiceRange) || merged.practiceRange.length === 0) {
+                        merged.practiceRange = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+                    }
                     return merged;
                 }
             } catch (e) {
@@ -2137,14 +2144,14 @@
         let currentPractice = { a: 0, b: 0 };
         let practiceQuestionStartTime = 0;  // 每题开始时间
         let practiceStarted = false; // 练习是否已开始
-        let practiceTargetCount = 20; // 目标题数
+        let practiceTargetCount = 30; // 目标题数（默认 30）
         let practiceCurrentCount = 0; // 当前已答题数（本轮）
         const PRACTICE_COUNT_OPTIONS = [10, 20, 30, 50, 100, 0]; // 0 表示不限
         const PRACTICE_COUNT_LABELS = { 10: '10题', 20: '20题', 30: '30题', 50: '50题', 100: '100题', 0: '♾️ 不限' };
         // 当前练习大模式：'free' 自由练习（按范围） | 'focus' 专项练习（薄弱/犹豫）
         let practiceMode = 'free';
-        // 专项练习状态（不持久化，每次打开页面重置）
-        let practiceFocusMode = { weak: false, hesitant: false };
+        // 专项练习状态（默认都勾选，数量为 0 时会在 renderFocusOptions 中自动取消）
+        let practiceFocusMode = { weak: true, hesitant: true };
         // 当前专项题库（开始练习时快照，避免中途薄弱项变化导致跳出）
         let practiceFocusPool = [];
 
@@ -2536,12 +2543,32 @@
 
         function generateChallengeQuestions() {
             const config = {
+                starter: { maxNum: 3, count: 8 },
                 easy: { maxNum: 5, count: 10 },
                 medium: { maxNum: 7, count: 15 },
-                hard: { maxNum: 9, count: 20 }
+                hard: { maxNum: 9, count: 20 },
+                expert: { maxNum: 9, count: 30 },
+                master: { maxNum: 9, count: 45, fullCover: true }
             };
-            const { maxNum, count } = config[challengeState.difficulty];
+            const cfg = config[challengeState.difficulty] || config.easy;
+            const { maxNum, count, fullCover } = cfg;
             const questions = [];
+
+            // 大师档：生成全量 45 道题（1×1 到 9×9，b<=a），随机排序
+            if (fullCover) {
+                for (let i = 1; i <= maxNum; i++) {
+                    for (let j = 1; j <= i; j++) {
+                        questions.push({ a: i, b: j });
+                    }
+                }
+                // Fisher-Yates 洗牌
+                for (let i = questions.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [questions[i], questions[j]] = [questions[j], questions[i]];
+                }
+                return questions;
+            }
+
             for (let i = 0; i < count; i++) {
                 const a = randomInt(1, maxNum);
                 const b = randomInt(1, a);

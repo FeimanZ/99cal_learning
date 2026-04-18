@@ -151,6 +151,15 @@
         @keyframes tapFlashConfirm{0%{box-shadow:0 0 0 0 rgba(255,107,53,.6)}40%{box-shadow:0 0 0 20px rgba(255,107,53,.15)}100%{box-shadow:0 0 0 28px rgba(255,107,53,0)}}
         .numpad-btn.delete.tap-flash{animation:tapFlashDelete .35s ease-out}
         @keyframes tapFlashDelete{0%{box-shadow:0 0 0 0 rgba(255,107,107,.6)}40%{box-shadow:0 0 0 16px rgba(255,107,107,.15)}100%{box-shadow:0 0 0 22px rgba(255,107,107,0)}}
+        /* ====== 专项练习勾选 ====== */
+        .focus-options{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+        .focus-option{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:2px solid #E0E0E0;border-radius:12px;background:#fff;cursor:pointer;transition:all .2s;user-select:none;font-size:14px;font-weight:600}
+        .focus-option:hover{border-color:var(--primary);background:#F8F9FF}
+        .focus-option input[type="checkbox"]{width:18px;height:18px;cursor:pointer;accent-color:var(--primary);margin:0}
+        .focus-option.active{border-color:var(--primary);background:linear-gradient(135deg,#F0F2FF,#E8EBFF);box-shadow:0 2px 8px rgba(108,99,255,.15)}
+        .focus-option.disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
+        .focus-option .focus-count{color:var(--text-light);font-weight:500;font-size:13px}
+        .focus-option.active .focus-count{color:var(--primary);font-weight:700}
         /* ====== 挑战模式 ====== */
         .challenge-setup{background:#fff;border-radius:var(--radius);padding:20px;text-align:center;box-shadow:var(--shadow);flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center}
         .difficulty-cards{display:flex;gap:14px;margin:14px 0;justify-content:center}
@@ -814,6 +823,20 @@
                         <div class="range-selector" style="box-shadow:none;padding:10px 0">
                             <h3 style="font-size:18px">🔢 选择题数</h3>
                             <div class="range-buttons" id="practiceCountButtons"></div>
+                        </div>
+                        <div class="range-selector" style="box-shadow:none;padding:10px 0">
+                            <h3 style="font-size:18px">🎯 专项练习（可选）</h3>
+                            <div class="focus-options" id="focusOptions">
+                                <label class="focus-option" id="focusWeakLabel">
+                                    <input type="checkbox" id="focusWeakCheck" onchange="toggleFocusMode('weak', this.checked)">
+                                    <span class="focus-text">⚠️ 仅练薄弱项 <span class="focus-count" id="focusWeakCount">(0)</span></span>
+                                </label>
+                                <label class="focus-option" id="focusHesitantLabel">
+                                    <input type="checkbox" id="focusHesitantCheck" onchange="toggleFocusMode('hesitant', this.checked)">
+                                    <span class="focus-text">🐢 仅练犹豫慢题 <span class="focus-count" id="focusHesitantCount">(0)</span></span>
+                                </label>
+                            </div>
+                            <p id="focusHint" style="margin:6px 0 0;font-size:12px;color:var(--text-light);text-align:center">勾选后将只出这些题，忽略上方"练习范围"</p>
                         </div>
                         <button class="btn btn-primary btn-lg" onclick="startPractice()" style="margin-top:10px">🚀 开始练习！</button>
                     </div>
@@ -1562,6 +1585,7 @@
 
             if (tabName === 'report') updateReport();
             if (tabName === 'practice' && practiceStarted) focusPracticeInput();
+            if (tabName === 'practice' && !practiceStarted) renderFocusOptions();
             if (tabName === 'assess') checkAssessHistory();
             if (tabName === 'help') detectAndSwitchBrowserTab();
 
@@ -2087,6 +2111,10 @@
         let practiceCurrentCount = 0; // 当前已答题数（本轮）
         const PRACTICE_COUNT_OPTIONS = [10, 20, 30, 50, 100, 0]; // 0 表示不限
         const PRACTICE_COUNT_LABELS = { 10: '10题', 20: '20题', 30: '30题', 50: '50题', 100: '100题', 0: '♾️ 不限' };
+        // 专项练习状态（不持久化，每次打开页面重置）
+        let practiceFocusMode = { weak: false, hesitant: false };
+        // 当前专项题库（开始练习时快照，避免中途薄弱项变化导致跳出）
+        let practiceFocusPool = [];
 
         function renderPracticeCountButtons() {
             const container = document.getElementById('practiceCountButtons');
@@ -2113,6 +2141,72 @@
             } else {
                 el.textContent = '(' + practiceCurrentCount + '/' + practiceTargetCount + ')';
             }
+        }
+
+        // 渲染专项练习勾选状态与题库数量
+        function renderFocusOptions() {
+            updateWeakItems();
+            const weakKeys = state.weakItems || [];
+            const hesitantKeys = getHesitantItems().map(h => h.key);
+            const weakCount = weakKeys.length;
+            const hesitantCount = hesitantKeys.length;
+
+            const weakCheck = document.getElementById('focusWeakCheck');
+            const hesitantCheck = document.getElementById('focusHesitantCheck');
+            const weakLabel = document.getElementById('focusWeakLabel');
+            const hesitantLabel = document.getElementById('focusHesitantLabel');
+            const weakCountEl = document.getElementById('focusWeakCount');
+            const hesitantCountEl = document.getElementById('focusHesitantCount');
+            if (!weakCheck || !hesitantCheck) return;
+
+            weakCountEl.textContent = '(' + weakCount + ')';
+            hesitantCountEl.textContent = '(' + hesitantCount + ')';
+
+            // 数量为 0 时禁用并自动取消
+            if (weakCount === 0) {
+                practiceFocusMode.weak = false;
+                weakLabel.classList.add('disabled');
+            } else {
+                weakLabel.classList.remove('disabled');
+            }
+            if (hesitantCount === 0) {
+                practiceFocusMode.hesitant = false;
+                hesitantLabel.classList.add('disabled');
+            } else {
+                hesitantLabel.classList.remove('disabled');
+            }
+
+            weakCheck.checked = practiceFocusMode.weak;
+            hesitantCheck.checked = practiceFocusMode.hesitant;
+            weakLabel.classList.toggle('active', practiceFocusMode.weak);
+            hesitantLabel.classList.toggle('active', practiceFocusMode.hesitant);
+        }
+
+        function toggleFocusMode(type, checked) {
+            if (type !== 'weak' && type !== 'hesitant') return;
+            practiceFocusMode[type] = !!checked;
+            renderFocusOptions();
+            console.log('[focusMode] 专项练习:', practiceFocusMode);
+        }
+
+        // 根据当前专项勾选，构建题目池（数组，每项 {a,b}，a>=b）
+        function buildPracticeFocusPool() {
+            const pool = new Map(); // key -> {a,b}
+            const addKey = (key) => {
+                const parts = key.split('×');
+                const b = parseInt(parts[0]);
+                const a = parseInt(parts[1]);
+                if (!isNaN(a) && !isNaN(b)) {
+                    pool.set(key, { a: Math.max(a, b), b: Math.min(a, b) });
+                }
+            };
+            if (practiceFocusMode.weak) {
+                (state.weakItems || []).forEach(addKey);
+            }
+            if (practiceFocusMode.hesitant) {
+                getHesitantItems().forEach(h => addKey(h.key));
+            }
+            return Array.from(pool.values());
         }
 
         function renderRangeButtons() {
@@ -2166,10 +2260,19 @@
 
         // 开始练习
         function startPractice() {
-            if (state.practiceRange.length === 0) {
+            // 构建专项题库
+            practiceFocusPool = buildPracticeFocusPool();
+            const useFocus = practiceFocusPool.length > 0;
+
+            if (!useFocus && state.practiceRange.length === 0) {
                 showToast('请先选择练习范围');
                 return;
             }
+            if ((practiceFocusMode.weak || practiceFocusMode.hesitant) && !useFocus) {
+                showToast('当前没有可练习的专项题目');
+                return;
+            }
+
             practiceStarted = true;
             practiceCurrentCount = 0;
             document.getElementById('practiceSetup').style.display = 'none';
@@ -2179,23 +2282,48 @@
             newPracticeQuestion();
             updatePracticeStats();
             updatePracticeProgress();
-            console.log('[startPractice] 练习开始, 范围:', state.practiceRange, '目标题数:', practiceTargetCount === 0 ? '不限' : practiceTargetCount);
+            if (useFocus) {
+                const tags = [];
+                if (practiceFocusMode.weak) tags.push('薄弱项');
+                if (practiceFocusMode.hesitant) tags.push('犹豫慢题');
+                showToast('🎯 专项练习：' + tags.join(' + ') + '（' + practiceFocusPool.length + '题）');
+            }
+            console.log('[startPractice] 练习开始, 专项=', useFocus, '题库数=', practiceFocusPool.length, '范围=', state.practiceRange, '目标题数:', practiceTargetCount === 0 ? '不限' : practiceTargetCount);
         }
 
         // 结束练习，回到准备页
         function stopPractice() {
             practiceStarted = false;
+            practiceFocusPool = [];
             document.getElementById('practiceSetup').style.display = 'flex';
             document.getElementById('practicePlay').style.display = 'none';
             renderRangeButtons();
+            renderFocusOptions(); // 刷新薄弱项/犹豫项数量（答题后可能变化）
             console.log('[stopPractice] 练习结束');
         }
 
         function newPracticeQuestion(silent) {
-            const range = state.practiceRange;
-            const a = range[randomInt(0, range.length - 1)];
-            const b = randomInt(1, a); // 保持 b <= a
-            currentPractice = { a: Math.max(a, b), b: Math.min(a, b) };
+            // 如果启用了专项练习，优先从专项池中出题
+            if (practiceFocusPool && practiceFocusPool.length > 0) {
+                let pick;
+                if (practiceFocusPool.length === 1) {
+                    pick = practiceFocusPool[0];
+                } else {
+                    // 避免连续重复：最多重试 5 次
+                    const lastKey = currentPractice.b + '×' + currentPractice.a;
+                    let attempt = 0;
+                    do {
+                        pick = practiceFocusPool[randomInt(0, practiceFocusPool.length - 1)];
+                        attempt++;
+                    } while (attempt < 5 && (pick.b + '×' + pick.a) === lastKey);
+                }
+                currentPractice = { a: pick.a, b: pick.b };
+            } else {
+                const range = state.practiceRange;
+                const a = range[randomInt(0, range.length - 1)];
+                const b = randomInt(1, a); // 保持 b <= a
+                currentPractice = { a: Math.max(a, b), b: Math.min(a, b) };
+            }
             document.getElementById('pNum1').textContent = currentPractice.b;
             document.getElementById('pNum2').textContent = currentPractice.a;
 
@@ -2786,33 +2914,30 @@
         }
 
         function practiceWeak() {
-            // 把薄弱项相关的数字加入练习范围
-            const nums = new Set();
-            state.weakItems.forEach(key => {
-                const parts = key.split('×');
-                nums.add(parseInt(parts[0]));
-                nums.add(parseInt(parts[1]));
-            });
-            state.practiceRange = [...nums];
-            saveState();
+            if (!state.weakItems || state.weakItems.length === 0) {
+                showToast('当前没有薄弱项');
+                return;
+            }
+            // 启用精准专项模式：只练薄弱项里的具体题目
+            practiceFocusMode.weak = true;
+            practiceFocusMode.hesitant = false;
             doSwitchTab('practice');
+            renderFocusOptions();
             startPractice();
-            showToast('已切换到薄弱项专练！💪');
         }
 
         function practiceHesitant() {
             const hesitant = getHesitantItems();
-            const nums = new Set();
-            hesitant.forEach(item => {
-                const parts = item.key.split('×');
-                nums.add(parseInt(parts[0]));
-                nums.add(parseInt(parts[1]));
-            });
-            state.practiceRange = [...nums];
-            saveState();
+            if (hesitant.length === 0) {
+                showToast('当前没有犹豫慢题');
+                return;
+            }
+            // 启用精准专项模式：只练犹豫慢题
+            practiceFocusMode.weak = false;
+            practiceFocusMode.hesitant = true;
             doSwitchTab('practice');
+            renderFocusOptions();
             startPractice();
-            showToast('已切换到犹豫题专练！⚡');
         }
 
         // ====== 摸底测试 ======
@@ -3250,16 +3375,34 @@
                 showToast('没有需要专练的题目 🎉');
                 return;
             }
-            const nums = new Set();
+            // 关闭其他专项勾选，使用摸底专属临时题库
+            practiceFocusMode.weak = false;
+            practiceFocusMode.hesitant = false;
+            const pool = new Map();
             focusRecords.forEach(r => {
-                nums.add(r.b);
-                nums.add(r.a);
+                const a = Math.max(r.a, r.b);
+                const b = Math.min(r.a, r.b);
+                pool.set(b + '×' + a, { a, b });
             });
-            state.practiceRange = [...nums];
-            saveState();
             doSwitchTab('practice');
-            startPractice();
-            showToast('已切换到摸底重点题专练！💪');
+            renderFocusOptions();
+            // 直接进入练习，使用临时池
+            practiceFocusPool = Array.from(pool.values());
+            if (practiceFocusPool.length === 0) {
+                showToast('没有需要专练的题目 🎉');
+                return;
+            }
+            practiceStarted = true;
+            practiceCurrentCount = 0;
+            document.getElementById('practiceSetup').style.display = 'none';
+            document.getElementById('practicePlay').style.display = 'flex';
+            renderRangeButtons();
+            createNumpad('practiceNumpad', 'practiceInput', checkPractice);
+            newPracticeQuestion();
+            updatePracticeStats();
+            updatePracticeProgress();
+            showToast('🎯 摸底重点题专练（' + practiceFocusPool.length + '题）');
+            console.log('[practiceAssessFocus] 摸底专项题库数:', practiceFocusPool.length);
         }
 
         function resetAssessView() {
@@ -3597,6 +3740,7 @@
             renderTable();
             renderRangeButtons();
             renderPracticeCountButtons();
+            renderFocusOptions();
             updatePracticeStats();
             createNumpad('challengeNumpad', 'challengeInput', checkChallenge);
             updateVoiceToggleUI();

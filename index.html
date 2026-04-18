@@ -2594,7 +2594,8 @@
         }
 
         // 渲染战绩概览和每张卡片的通关徽章
-        function renderChallengeOverview() {
+        // skipAutoSelect=true 时不会自动选中档位（用于调用方已手动选好的场景）
+        function renderChallengeOverview(skipAutoSelect) {
             const best = state.challengeBest || {};
             // 概览
             const total = state.challengesDone || 0;
@@ -2636,6 +2637,19 @@
                     if (bestTimeEl) bestTimeEl.style.display = 'none';
                 }
             });
+
+            // 自动选中「最低未通关档位」（如果全部通关，则选中最后一档）
+            // 仅在准备页可见时生效，避免干扰已在进行中的挑战
+            const setupEl = document.getElementById('challengeSetup');
+            if (!skipAutoSelect && setupEl && setupEl.style.display !== 'none') {
+                let targetKey = DIFFICULTY_ORDER.find(k => !(best[k] && best[k].passed));
+                if (!targetKey) targetKey = DIFFICULTY_ORDER[DIFFICULTY_ORDER.length - 1];
+                challengeState.difficulty = targetKey;
+                document.querySelectorAll('.difficulty-card').forEach(c => c.classList.remove('selected'));
+                const targetCard = document.getElementById(cardIdMap[targetKey]);
+                if (targetCard) targetCard.classList.add('selected');
+                console.log('[renderChallengeOverview] 自动选中档位:', targetKey);
+            }
         }
 
         function generateChallengeQuestions() {
@@ -2920,7 +2934,7 @@
             document.querySelectorAll('.difficulty-card').forEach(c => c.classList.remove('selected'));
             const card = document.getElementById(cardIdMap[nextKey]);
             if (card) card.classList.add('selected');
-            renderChallengeOverview();
+            renderChallengeOverview(true);
             // 自动开始
             setTimeout(() => startChallenge(), 200);
         }

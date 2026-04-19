@@ -114,6 +114,10 @@
         .quiz-question .quiz-input{font-size:48px;width:130px;height:66px}
         .quiz-input{width:140px;height:68px;font-size:42px;text-align:center;border:4px solid #E0E0E0;border-radius:16px;outline:none;font-weight:800;color:var(--primary);transition:border-color .3s;caret-color:transparent;-webkit-user-select:none;user-select:none}
         .quiz-input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(108,99,255,.1)}
+        .quiz-input.input-pulse{animation:inputPulse .22s ease-out}
+        @keyframes inputPulse{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(108,99,255,.35)}50%{transform:scale(1.06);box-shadow:0 0 0 8px rgba(108,99,255,.15)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(108,99,255,0)}}
+        .quiz-input.input-shake{animation:inputShake .35s ease}
+        @keyframes inputShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
         .quiz-input.correct{border-color:var(--success);background:#E8F5E9;color:var(--success)}
         .quiz-input.wrong{border-color:var(--danger);background:#FFEBEE;color:var(--danger)}
         /* ====== 按钮 ====== */
@@ -3754,14 +3758,24 @@
             }
         }
         // 按钮点击反馈（视觉+振动）
-        // action: 立即执行的动作函数（在 pointerdown 时触发，响应更快，避免 click 延迟）
+        // action: 立即执行的动作函数
+        // 设计原则：
+        //   1. 只绑一种事件路径，避免 pointer/click 重复触发
+        //   2. 有 PointerEvent 支持就用 pointerdown（立即响应）
+        //   3. 无 PointerEvent 就回退到 touchstart（移动端）或 click（桌面端）
+        //   4. 200ms 重入保护，防御异常情况
+        const HAS_POINTER_EVENT = typeof window !== 'undefined' && 'PointerEvent' in window;
+
         function addBtnFeedback(btn, hapticType, action) {
             let lastFireTime = 0;
-            const DEBOUNCE_MS = 50; // 防抖：50ms 内同一按钮只触发一次，避免 pointer/click 重入
+            const REENTRANT_GUARD_MS = 200; // 200ms 重入保护
 
-            const fire = (e) => {
+            const fire = () => {
                 const now = Date.now();
-                if (now - lastFireTime < DEBOUNCE_MS) return;
+                if (now - lastFireTime < REENTRANT_GUARD_MS) {
+                    console.log('[numpad] 重入保护触发，间隔', (now - lastFireTime) + 'ms');
+                    return;
+                }
                 lastFireTime = now;
 
                 triggerHaptic(hapticType || 'light');
@@ -3773,22 +3787,37 @@
                 void btn.offsetWidth;
                 btn.classList.add('ripple-active');
 
-                // 立即执行动作（若提供）
+                // 立即执行动作
                 if (typeof action === 'function') {
                     try { action(); } catch (err) { console.error('[numpad] action error:', err); }
                 }
             };
 
-            // 用 pointerdown 而非 click，响应更快；同时阻止默认行为避免合成 mouse 事件导致的重复
-            btn.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                fire(e);
-            });
-            // 兜底：某些极端浏览器没有 pointer 事件时仍能响应
-            btn.addEventListener('click', (e) => {
-                // pointerdown 已触发过的话这里被防抖挡掉，不会重复
-                fire(e);
-            });
+            if (HAS_POINTER_EVENT) {
+                // 现代浏览器：统一用 pointerdown，一次点击一次事件（触摸/鼠标/笔都走这里）
+                btn.addEventListener('pointerdown', (e) => {
+                    // 只处理主按键，忽略右键等
+                    if (e.button !== undefined && e.button !== 0) return;
+                    e.preventDefault(); // 阻止后续合成的 mouse/click 事件
+                    fire();
+                });
+            } else {
+                // 兜底：老 iOS Safari / 极老浏览器
+                let touched = false;
+                btn.addEventListener('touchstart', (e) => {
+                    touched = true;
+                    e.preventDefault();
+                    fire();
+                }, { passive: false });
+                btn.addEventListener('click', (e) => {
+                    // 如果刚刚 touchstart 已经触发过，就不再响应 click
+                    if (touched) {
+                        touched = false;
+                        return;
+                    }
+                    fire();
+                });
+            }
 
             btn.addEventListener('animationend', () => {
                 btn.classList.remove('tap-flash');
@@ -3841,6 +3870,15 @@
             const input = document.getElementById(inputId);
             if (input.value.length < 3) {
                 input.value += num;
+                // 输入脉冲反馈
+                input.classList.remove('input-pulse');
+                void input.offsetWidth;
+                input.classList.add('input-pulse');
+            } else {
+                // 已达最大长度，抖动提示
+                input.classList.remove('input-shake');
+                void input.offsetWidth;
+                input.classList.add('input-shake');
             }
         }
 

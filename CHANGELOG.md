@@ -1,5 +1,21 @@
 # 九九小课堂 - 开发日志
 
+## v1.9.11 (2026-04-19)
+
+### 🐛 修复数字键盘快速点击失效问题
+
+#### 根因分析
+1. **双击放大防护误伤**：全局 `touchend` 监听中，300ms 内连续两次点击会被 `preventDefault`，导致第二次点击的 `click` 事件不触发。答题时如 `42`、`56` 这类两位数会丢失第二位数字。
+2. **`click` 事件本身延迟**：移动端为判断双击，`click` 比 `pointerdown` 慢约 300ms，视觉反馈（pointerdown）和动作执行（click）时机不一致。
+3. **事件链条脆弱**：快速连击下 CSS transitionend/animationend 可能漏触发，残留状态影响后续点击。
+
+#### 修复措施
+- **动作触发改用 `pointerdown`**：立即响应，绕过 click 延迟
+- **加 50ms 防抖保护**：避免 pointer + click 重入触发两次
+- **双击防护放行 numpad**：`touchend` 检测到目标在 `.numpad-btn` 内时不拦截
+- **加 `touch-action: manipulation`**：浏览器原生消除 300ms 延迟
+- **`button.type = 'button'`**：避免意外 form 提交行为
+
 ## v1.9.10 (2026-04-19)
 
 ### 闯关难度卡片进一步压缩

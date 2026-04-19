@@ -133,7 +133,7 @@
         .stat-label{font-size:14px;color:var(--text-light);margin-top:2px;font-weight:600}
         /* ====== 数字键盘 ====== */
         .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;width:100%}
-        .numpad-btn{padding:28px;font-size:40px;font-weight:800;border:none;border-radius:18px;background:#F0F0F0;color:var(--text);cursor:pointer;transition:transform .12s cubic-bezier(.4,0,.2,1),background .12s,box-shadow .12s;user-select:none;-webkit-tap-highlight-color:transparent;min-height:72px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+        .numpad-btn{padding:28px;font-size:40px;font-weight:800;border:none;border-radius:18px;background:#F0F0F0;color:var(--text);cursor:pointer;transition:transform .12s cubic-bezier(.4,0,.2,1),background .12s,box-shadow .12s;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:72px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
         .numpad-btn::after{content:'';position:absolute;top:50%;left:50%;width:0;height:0;border-radius:50%;background:rgba(108,99,255,.25);transform:translate(-50%,-50%);transition:width .4s ease-out,height .4s ease-out,opacity .4s;opacity:0;pointer-events:none}
         .numpad-btn.ripple-active::after{width:200%;height:200%;opacity:0}
         .numpad-btn:hover{background:#E0E0E0;transform:scale(1.04)}
@@ -3754,18 +3754,42 @@
             }
         }
         // 按钮点击反馈（视觉+振动）
-        function addBtnFeedback(btn, hapticType) {
-            btn.addEventListener('pointerdown', (e) => {
+        // action: 立即执行的动作函数（在 pointerdown 时触发，响应更快，避免 click 延迟）
+        function addBtnFeedback(btn, hapticType, action) {
+            let lastFireTime = 0;
+            const DEBOUNCE_MS = 50; // 防抖：50ms 内同一按钮只触发一次，避免 pointer/click 重入
+
+            const fire = (e) => {
+                const now = Date.now();
+                if (now - lastFireTime < DEBOUNCE_MS) return;
+                lastFireTime = now;
+
                 triggerHaptic(hapticType || 'light');
-                // 光波动画
+                // 视觉反馈
                 btn.classList.remove('tap-flash');
                 void btn.offsetWidth;
                 btn.classList.add('tap-flash');
-                // 涟漪扩散动画
                 btn.classList.remove('ripple-active');
                 void btn.offsetWidth;
                 btn.classList.add('ripple-active');
+
+                // 立即执行动作（若提供）
+                if (typeof action === 'function') {
+                    try { action(); } catch (err) { console.error('[numpad] action error:', err); }
+                }
+            };
+
+            // 用 pointerdown 而非 click，响应更快；同时阻止默认行为避免合成 mouse 事件导致的重复
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                fire(e);
             });
+            // 兜底：某些极端浏览器没有 pointer 事件时仍能响应
+            btn.addEventListener('click', (e) => {
+                // pointerdown 已触发过的话这里被防抖挡掉，不会重复
+                fire(e);
+            });
+
             btn.addEventListener('animationend', () => {
                 btn.classList.remove('tap-flash');
             });
@@ -3780,36 +3804,36 @@
             for (let i = 1; i <= 9; i++) {
                 const btn = document.createElement('button');
                 btn.className = 'numpad-btn';
+                btn.type = 'button';
                 btn.textContent = i;
-                btn.onclick = () => appendToInput(inputId, i);
-                addBtnFeedback(btn, 'light');
+                addBtnFeedback(btn, 'light', () => appendToInput(inputId, i));
                 container.appendChild(btn);
             }
             // 删除
             const delBtn = document.createElement('button');
             delBtn.className = 'numpad-btn delete';
+            delBtn.type = 'button';
             delBtn.textContent = '⌫';
-            delBtn.onclick = () => {
+            addBtnFeedback(delBtn, 'medium', () => {
                 const input = document.getElementById(inputId);
                 input.value = input.value.slice(0, -1);
-            };
-            addBtnFeedback(delBtn, 'medium');
+            });
             container.appendChild(delBtn);
 
             // 0
             const zeroBtn = document.createElement('button');
             zeroBtn.className = 'numpad-btn';
+            zeroBtn.type = 'button';
             zeroBtn.textContent = '0';
-            zeroBtn.onclick = () => appendToInput(inputId, 0);
-            addBtnFeedback(zeroBtn, 'light');
+            addBtnFeedback(zeroBtn, 'light', () => appendToInput(inputId, 0));
             container.appendChild(zeroBtn);
 
             // 确认
             const confirmBtn = document.createElement('button');
             confirmBtn.className = 'numpad-btn confirm';
+            confirmBtn.type = 'button';
             confirmBtn.textContent = 'OK';
-            confirmBtn.onclick = submitFn;
-            addBtnFeedback(confirmBtn, 'confirm');
+            addBtnFeedback(confirmBtn, 'confirm', submitFn);
             container.appendChild(confirmBtn);
         }
 
@@ -4121,9 +4145,15 @@
                 }
             }, { passive: false });
 
-            // 禁止快速双击放大
+            // 禁止快速双击放大（但放行数字键盘按钮，避免连续点击被吞）
             let lastTapTime = 0;
             document.addEventListener('touchend', function(e) {
+                // 数字键盘按钮是合法的高频点击场景，不拦截
+                const t = e.target;
+                if (t && typeof t.closest === 'function' && t.closest('.numpad-btn')) {
+                    lastTapTime = 0;
+                    return;
+                }
                 const now = Date.now();
                 if (now - lastTapTime < 300) {
                     e.preventDefault();

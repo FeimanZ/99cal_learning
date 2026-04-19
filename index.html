@@ -161,7 +161,7 @@
         .focus-option .focus-count{color:var(--text-light);font-weight:500;font-size:13px}
         .focus-option.active .focus-count{color:var(--primary);font-weight:700}
         /* 练习模式二选一切换 - 紧凑横排 */
-        .practice-mode-switch{display:flex;gap:10px;width:100%;max-width:520px;margin:0 auto 6px}
+        .practice-mode-switch{display:flex;gap:10px;width:100%;max-width:520px;margin:0 auto 6px;justify-content:center}
         .practice-mode-btn{flex:1;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border:2px solid #E0E0E0;border-radius:12px;background:#fff;cursor:pointer;transition:all .2s;user-select:none;font-family:inherit;text-align:left}
         .practice-mode-btn:hover{border-color:var(--primary);background:#F8F9FF;transform:translateY(-1px)}
         .practice-mode-btn .mode-icon{font-size:22px;line-height:1;flex-shrink:0}
@@ -173,15 +173,20 @@
         .practice-mode-btn.active .mode-desc{color:var(--primary);opacity:.75}
         /* 练习模式面板统一容器：固定最小高度，避免两种模式切换时页面跳变 */
         .practice-mode-panels{width:100%;min-height:86px;display:flex;align-items:center;justify-content:center;margin:2px 0}
-        .practice-mode-panels .practice-mode-panel{width:100%;box-shadow:none;padding:0;background:transparent}
+        .practice-mode-panels .practice-mode-panel{width:100%;box-shadow:none;padding:0;background:transparent;text-align:center}
         .practice-mode-panels .practice-mode-panel h3{font-size:15px;margin-bottom:6px}
         .practice-mode-panels .focus-hint{margin:6px 0 0;font-size:11px;color:var(--text-light);text-align:center}
         /* 练一练准备页：顶部对齐、间距紧凑 */
         #tab-practice #practiceSetup{height:100%}
-        #tab-practice #practiceSetup .challenge-setup{justify-content:flex-start;padding:12px 16px;gap:0}
-        #tab-practice #practiceSetup .challenge-setup > .range-selector{box-shadow:none;padding:2px 0;width:100%}
+        /* 准备页极简标题栏（右侧留出 safe area 避开顶部固定按钮） */
+        #tab-practice #practiceSetup .practice-header{flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:6px 170px 6px 16px;font-size:15px;font-weight:700;color:var(--primary);gap:6px}
+        #tab-practice #practiceSetup .challenge-setup{justify-content:flex-start;padding:10px 16px;gap:0;align-items:center}
+        #tab-practice #practiceSetup .challenge-setup > .range-selector{box-shadow:none;padding:2px 0;width:100%;text-align:center}
         #tab-practice #practiceSetup .challenge-setup > .range-selector h3{font-size:15px;margin-bottom:4px}
         #tab-practice #practiceSetup .btn-lg{margin-top:8px !important;padding:10px 22px;font-size:16px}
+        /* 练一练所有选项按钮水平居中 */
+        #tab-practice #practiceSetup .range-buttons{justify-content:center}
+        #tab-practice #practiceSetup .focus-options{justify-content:center}
         /* ====== 挑战模式 ====== */
         .challenge-setup{background:#fff;border-radius:var(--radius);padding:20px;text-align:center;box-shadow:var(--shadow);flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center}
         .difficulty-cards{display:flex;gap:14px;margin:14px 0;justify-content:center;flex-wrap:wrap}
@@ -848,6 +853,7 @@
             <div id="tab-practice" class="tab-content">
                 <!-- 练习准备页 -->
                 <div id="practiceSetup" style="flex:1;display:flex;flex-direction:column">
+                    <div class="practice-header">✏️ 练一练 · 选择模式开始答题</div>
                     <div class="challenge-setup">
                         <!-- 模式切换：自由 / 专项 二选一 -->
                         <div class="practice-mode-switch" id="practiceModeSwitch">
